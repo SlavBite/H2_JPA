@@ -13,19 +13,39 @@ public class StylistsRepo implements IRepo<Stylists> {
             Persistence.createEntityManagerFactory("TST").createEntityManager();
 
     @Override
-    public Integer insert(Stylists stylist) throws SQLException {
-        String str = String.format("INSERT INTO stylists (name, isDeleted) VALUES ('%s', %s)",
-                stylist.getName(),
-                stylist.isDeleted());
-        this.executeRequest(str);
-        try (ResultSet rs = this.getStatement(this.connectToDB()).executeQuery("SELECT MAX(id) FROM Stylists")) {
-            this.closeConnection(this.getStatement(this.connectToDB()));
-            while (rs.next()) {
-                return rs.getInt(1);
+    public void insert(Stylists stylist)  throws SQLException {
+        String query = "INSERT INTO stylists (name, isDeleted) VALUES (?, ?)";
+        try (Connection conn = this.connectToDB();
+             PreparedStatement statement = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            Statement stmt = this.getStatement(this.connectToDB());
+            statement.setString(1, stylist.getName());
+            statement.setBoolean(2, stylist.isDeleted());
+            statement.executeUpdate();
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    stylist.setId(generatedKeys.getInt(1));
+                } else {
+                    throw new SQLException("Failed to get generated id for client.");
+                }
             }
-            return -1;
         }
     }
+
+
+//    @Override
+//    public Integer insert(Stylists stylist) throws SQLException {
+//        String str = String.format("INSERT INTO stylists (name, isDeleted) VALUES ('%s', %s)",
+//                stylist.getName(),
+//                stylist.isDeleted());
+//        this.executeRequest(str);
+//        try (ResultSet rs = this.getStatement(this.connectToDB()).executeQuery("SELECT MAX(id) FROM Stylists")) {
+//            this.closeConnection(this.getStatement(this.connectToDB()));
+//            while (rs.next()) {
+//                return rs.getInt(1);
+//            }
+//            return -1;
+//        }
+//    }
     @Override
     public void delete(Stylists stylists) throws SQLException {
         String str = String.format("UPDATE Stylists SET isDeleted = true WHERE id = %s" , stylists.getId());

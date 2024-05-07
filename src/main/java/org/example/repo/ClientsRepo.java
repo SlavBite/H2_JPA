@@ -10,20 +10,41 @@ import java.util.List;
 
 public class ClientsRepo implements IRepo<Clients> {
     public EntityManager em = Persistence.createEntityManagerFactory("TST").createEntityManager();
-    @Override
-    public Integer insert(Clients client) throws SQLException {
-        String str = String.format("INSERT INTO clients (name, idStylists, isDeleted) VALUES ('%s', '%s', %s)",
-                client.getName(),
-                client.getIdStylists().getId(),
-                client.isDeleted());
-        this.executeRequest(str);
-        try (ResultSet rs = this.getStatement(this.connectToDB()).executeQuery("SELECT MAX(id) FROM Clients")) {
-            this.closeConnection(this.getStatement(this.connectToDB()));
-            while (rs.next()) {
-                return rs.getInt(1);
-            }
+//    @Override
+//    public Integer insert(Clients client) throws SQLException {
+//        String str = String.format("INSERT INTO clients (name, idStylists, isDeleted) VALUES ('%s', '%s', %s)",
+//                client.getName(),
+////              client.getIdStylists().getId(),
+//                client.isDeleted());
+//        this.executeRequest(str);
+//        try (ResultSet rs = this.getStatement(this.connectToDB()).executeQuery("SELECT MAX(id) FROM Clients")) {
+//            this.closeConnection(this.getStatement(this.connectToDB()));
+//            while (rs.next()) {
+//                return rs.getInt(1);
+//            }
+//
+//            return -1;
+//        }
+//    }
 
-            return -1;
+    @Override
+    public Clients insert(Clients client) throws SQLException {
+        String query = "INSERT INTO clients (name, idStylists, isDeleted) VALUES (?, ?, ?)";
+        try (Connection conn = this.connectToDB();
+             PreparedStatement statement = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            Statement stmt = this.getStatement(this.connectToDB());
+            statement.setString(1, client.getName());
+            statement.setInt(2, client.getIdStylists().getId());
+            statement.setBoolean(3, client.isDeleted());
+            statement.executeUpdate();
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                client.setId(generatedKeys.getInt(1));
+                return client;
+                } else {
+                throw new SQLException("Failed to get generated id for client.");
+                }
+            }
         }
     }
     @Override
